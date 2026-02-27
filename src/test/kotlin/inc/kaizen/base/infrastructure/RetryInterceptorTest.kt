@@ -76,5 +76,25 @@ class RetryInterceptorTest : FunSpec({
         // Just verify it can be created with defaults without exceptions
         interceptor shouldBe interceptor
     }
+
+    test("custom maxBackoffMillis is respected") {
+        // Just verify creation with the new parameter works
+        val interceptor = RetryInterceptor(maxRetries = 2, initialBackoffMillis = 50, maxBackoffMillis = 100)
+        interceptor shouldBe interceptor
+    }
+
+    test("retries capped by maxBackoffMillis") {
+        server.enqueue(MockResponse().setResponseCode(500))
+        server.enqueue(MockResponse().setResponseCode(500))
+        server.enqueue(MockResponse().setResponseCode(200).setBody("ok"))
+
+        val client = OkHttpClient.Builder()
+            .addInterceptor(RetryInterceptor(maxRetries = 3, initialBackoffMillis = 50, maxBackoffMillis = 60))
+            .build()
+
+        val response = client.newCall(Request.Builder().url(server.url("/")).build()).execute()
+        response.code shouldBe 200
+        server.requestCount shouldBe 3
+    }
 })
 

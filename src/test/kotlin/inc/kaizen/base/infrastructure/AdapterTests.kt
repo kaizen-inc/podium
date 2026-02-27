@@ -100,10 +100,10 @@ class LocalDateAdapterTest : FunSpec({
 class ByteArrayAdapterTest : FunSpec({
     val adapter = ByteArrayAdapter()
 
-    test("write non-null") {
+    test("write non-null encodes as Base64") {
         val sw = StringWriter()
         adapter.write(JsonWriter(sw), "hello".toByteArray())
-        sw.toString() shouldBe "\"hello\""
+        sw.toString() shouldBe "\"aGVsbG8=\""
     }
 
     test("write null") {
@@ -112,9 +112,17 @@ class ByteArrayAdapterTest : FunSpec({
         sw.toString() shouldBe "null"
     }
 
-    test("read valid") {
-        val result = adapter.read(JsonReader(StringReader("\"hello\"")))
+    test("read valid Base64 decodes correctly") {
+        val result = adapter.read(JsonReader(StringReader("\"aGVsbG8=\"")))
         String(result!!) shouldBe "hello"
+    }
+
+    test("round-trip encode and decode") {
+        val original = byteArrayOf(0x00, 0x01, 0xFF.toByte(), 0xFE.toByte())
+        val sw = StringWriter()
+        adapter.write(JsonWriter(sw), original)
+        val decoded = adapter.read(JsonReader(StringReader(sw.toString())))
+        decoded shouldBe original
     }
 
     test("read null token") {

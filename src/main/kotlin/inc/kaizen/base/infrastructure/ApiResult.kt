@@ -2,7 +2,6 @@ package inc.kaizen.base.infrastructure
 
 import retrofit2.HttpException
 import retrofit2.Response
-import java.io.IOException
 
 /**
  * A sealed class representing the result of an API call.
@@ -49,6 +48,48 @@ sealed class ApiResult<out T> {
     fun getOrElse(defaultValue: () -> @UnsafeVariance T): T = when (this) {
         is Success -> data
         else -> defaultValue()
+    }
+
+    /**
+     * Transforms the [Success] data using [transform], leaving [Error] and [Exception] unchanged.
+     */
+    fun <R> map(transform: (T) -> R): ApiResult<R> = when (this) {
+        is Success -> Success(transform(data), code)
+        is Error -> this
+        is Exception -> this
+    }
+
+    /**
+     * Chains another [ApiResult]-producing operation on [Success] data.
+     */
+    fun <R> flatMap(transform: (T) -> ApiResult<R>): ApiResult<R> = when (this) {
+        is Success -> transform(data)
+        is Error -> this
+        is Exception -> this
+    }
+
+    /**
+     * Executes [action] if this is a [Success], then returns this result unchanged.
+     */
+    fun onSuccess(action: (T) -> Unit): ApiResult<T> {
+        if (this is Success) action(data)
+        return this
+    }
+
+    /**
+     * Executes [action] if this is an [Error], then returns this result unchanged.
+     */
+    fun onError(action: (Error) -> Unit): ApiResult<T> {
+        if (this is Error) action(this)
+        return this
+    }
+
+    /**
+     * Executes [action] if this is an [Exception], then returns this result unchanged.
+     */
+    fun onException(action: (Throwable) -> Unit): ApiResult<T> {
+        if (this is Exception) action(exception)
+        return this
     }
 
     /**
@@ -100,9 +141,33 @@ suspend fun <T> safeApiCall(call: suspend () -> Response<T>): ApiResult<T> {
         }
     } catch (e: HttpException) {
         ApiResult.Error(e.code(), e.message())
-    } catch (e: IOException) {
+    } catch (e: Throwable) {
         ApiResult.Exception(e)
-    } catch (e: Exception) {
+    }
+}
+
+/**
+ * Wraps a suspend Retrofit API call whose body may legitimately be null (e.g. HTTP 204).
+ *
+ * A null body on a successful response is returned as [ApiResult.Success] with `null` data,
+ * rather than being treated as an error.
+ *
+ * @param T The type of the response body.
+ * @param call The suspend function performing the API call.
+ * @return An [ApiResult] wrapping the result or error.
+ */
+suspend fun <T> safeApiCallNullable(call: suspend () -> Response<T>): ApiResult<T?> {
+    return try {
+        val response = call()
+        if (response.isSuccessful) {
+            ApiResult.Success(response.body(), response.code())
+        } else {
+            val errorBody = response.errorBody()?.use { it.string() }
+            ApiResult.Error(response.code(), response.message(), errorBody)
+        }
+    } catch (e: HttpException) {
+        ApiResult.Error(e.code(), e.message())
+    } catch (e: Throwable) {
         ApiResult.Exception(e)
     }
 }

@@ -125,6 +125,36 @@ class ApiClientTest : FunSpec({
         )
         client shouldNotBe null
     }
+
+    test("removeAuthorization returns true when auth exists") {
+        val client = ApiClient(baseUrl = server.url("/").toString())
+        val interceptor = Interceptor { chain -> chain.proceed(chain.request()) }
+        client.addAuthorization("bearer", interceptor)
+        client.removeAuthorization("bearer") shouldBe true
+    }
+
+    test("removeAuthorization returns false when auth does not exist") {
+        val client = ApiClient(baseUrl = server.url("/").toString())
+        client.removeAuthorization("nonexistent") shouldBe false
+    }
+
+    test("clearServiceCache forces re-creation of services") {
+        val client = ApiClient(baseUrl = server.url("/").toString())
+        val service1 = client.createService(TestService::class.java)
+        client.clearServiceCache()
+        val service2 = client.createService(TestService::class.java)
+        // After clearing, a new instance should be created (different reference)
+        (service1 === service2) shouldBe false
+    }
+
+    test("ApiClient with custom logging level NONE") {
+        val logs = mutableListOf<String>()
+        val client = ApiClient(
+            baseUrl = server.url("/").toString(),
+            loggingLevel = okhttp3.logging.HttpLoggingInterceptor.Level.NONE
+        ).setLogger { logs.add(it) }
+        client shouldNotBe null
+    }
 })
 
 interface TestService {

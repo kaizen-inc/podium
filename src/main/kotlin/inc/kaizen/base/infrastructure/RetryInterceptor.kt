@@ -3,20 +3,25 @@ package inc.kaizen.base.infrastructure
 import okhttp3.Interceptor
 import okhttp3.Response
 import java.io.IOException
+import kotlin.random.Random
 
 /**
- * An OkHttp interceptor that retries failed requests with exponential backoff.
+ * An OkHttp interceptor that retries failed requests with exponential backoff and jitter.
  *
  * Retries are attempted for:
  * - Network failures ([IOException])
  * - Server errors (HTTP 5xx) on idempotent methods (GET, HEAD, OPTIONS, PUT, DELETE)
  *
+ * Full jitter is applied to each backoff delay to spread out thundering-herd retries.
+ *
  * @property maxRetries Maximum number of retry attempts. Defaults to 3.
- * @property initialBackoffMillis Initial backoff delay in milliseconds. Doubles after each retry. Defaults to 1000ms.
+ * @property initialBackoffMillis Initial backoff delay in milliseconds. Defaults to 1000ms.
+ * @property maxBackoffMillis Upper cap for any single backoff delay in milliseconds. Defaults to 30000ms.
  */
 class RetryInterceptor(
     private val maxRetries: Int = 3,
-    private val initialBackoffMillis: Long = 1000L
+    private val initialBackoffMillis: Long = 1000L,
+    private val maxBackoffMillis: Long = 30_000L,
 ) : Interceptor {
 
     companion object {
@@ -64,9 +69,13 @@ class RetryInterceptor(
         return response.code in 500..599 && method.uppercase() in IDEMPOTENT_METHODS
     }
 
+    /**
+     * Sleeps for a jittered exponential backoff duration.
+     * Actual delay = random value in [0, min(initialBackoffMillis * 2^attempt, maxBackoffMillis)].
+     */
     private fun sleepForBackoff(attempt: Int) {
-        val backoff = initialBackoffMillis * (1L shl attempt)
-        Thread.sleep(backoff)
+        val exponential = minOf(initialBackoffMillis * (1L shl attempt), maxBackoffMillis)
+        val jittered = Random.nextLong(0, exponential + 1)
+        Thread.sleep(jittered)
     }
 }
-

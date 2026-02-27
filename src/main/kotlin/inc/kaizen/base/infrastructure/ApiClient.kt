@@ -23,6 +23,7 @@ import retrofit2.converter.scalars.ScalarsConverterFactory
  * @param converterFactory Optional additional Converter.Factory.
  * @param timeoutConfig Timeout configuration for connect, read, and write. Defaults to 30s each.
  * @param retryInterceptor Optional retry interceptor for automatic request retries.
+ * @param loggingLevel HTTP logging verbosity. Defaults to [HttpLoggingInterceptor.Level.BODY].
  */
 class ApiClient(
     private var baseUrl: String,
@@ -32,6 +33,7 @@ class ApiClient(
     private val converterFactory: Converter.Factory? = null,
     private val timeoutConfig: TimeoutConfig = TimeoutConfig(),
     private val retryInterceptor: RetryInterceptor? = null,
+    private val loggingLevel: HttpLoggingInterceptor.Level = HttpLoggingInterceptor.Level.BODY,
 ) {
     private val apiAuthorizations = mutableMapOf<String, Interceptor>()
     private var logger: ((String) -> Unit)? = null
@@ -61,7 +63,7 @@ class ApiClient(
             .readTimeout(timeoutConfig.readTimeout, timeoutConfig.timeUnit)
             .writeTimeout(timeoutConfig.writeTimeout, timeoutConfig.timeUnit)
             .addInterceptor(HttpLoggingInterceptor { message -> logger?.invoke(message) }.apply {
-                level = HttpLoggingInterceptor.Level.BODY
+                level = loggingLevel
             })
             .apply {
                 retryInterceptor?.let { addInterceptor(it) }
@@ -73,7 +75,7 @@ class ApiClient(
     }
 
     /**
-     * Adds an authorization to be used by the client.
+     * Adds an authorization interceptor to be used by the client.
      * @param authName Authentication name (must be unique).
      * @param authorization Authorization interceptor.
      * @return This [ApiClient] instance for chaining.
@@ -86,6 +88,20 @@ class ApiClient(
         apiAuthorizations[authName] = authorization
         clientBuilder.addInterceptor(authorization)
         return this
+    }
+
+    /**
+     * Removes a previously registered authorization interceptor by name.
+     *
+     * Note: OkHttp does not support removing interceptors from a built client. This removes the
+     * entry from the internal registry so it is not re-applied on future client builds, but
+     * services created before this call are unaffected.
+     *
+     * @param authName The name of the authorization to remove.
+     * @return `true` if the authorization was found and removed, `false` otherwise.
+     */
+    fun removeAuthorization(authName: String): Boolean {
+        return apiAuthorizations.remove(authName) != null
     }
 
     /**
@@ -138,6 +154,16 @@ class ApiClient(
      */
     inline fun <reified S> createService(interceptor: Interceptor? = null): S {
         return createService(S::class.java, interceptor)
+    }
+
+    /**
+     * Clears the internal service instance cache.
+     *
+     * Call this if you need to force re-creation of service instances (e.g., after changing
+     * authorization headers or base URL).
+     */
+    fun clearServiceCache() {
+        apis.clear()
     }
 
     private fun normalizeBaseUrl() {
