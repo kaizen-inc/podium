@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
+import java.util.Date
 
 object Serializer {
     @JvmStatic
@@ -12,6 +13,7 @@ object Serializer {
         .registerTypeAdapter(OffsetDateTime::class.java, OffsetDateTimeAdapter())
         .registerTypeAdapter(LocalDateTime::class.java, LocalDateTimeAdapter())
         .registerTypeAdapter(LocalDate::class.java, LocalDateAdapter())
+        .registerTypeAdapter(Date::class.java, DateAdapter())
         .registerTypeAdapter(ByteArray::class.java, ByteArrayAdapter())
 
     @JvmStatic

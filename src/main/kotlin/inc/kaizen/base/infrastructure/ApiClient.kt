@@ -4,20 +4,34 @@ import com.google.gson.GsonBuilder
 import okhttp3.Call
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
-import okhttp3.ResponseBody
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Converter
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.converter.scalars.ScalarsConverterFactory
-import java.lang.reflect.Type
 
+/**
+ * Core API client builder wrapping Retrofit2 with sensible defaults.
+ *
+ * Provides configurable HTTP logging, authorization interceptors, timeout configuration,
+ * retry support, and Gson-based serialization with Java 8+ date/time adapters.
+ *
+ * @param baseUrl The base URL for the API.
+ * @param okHttpClientBuilder Optional custom OkHttpClient builder.
+ * @param serializerBuilder The GsonBuilder used for serialization. Defaults to [Serializer.gsonBuilder].
+ * @param callFactory Optional custom Call.Factory.
+ * @param converterFactory Optional additional Converter.Factory.
+ * @param timeoutConfig Timeout configuration for connect, read, and write. Defaults to 30s each.
+ * @param retryInterceptor Optional retry interceptor for automatic request retries.
+ */
 class ApiClient(
     private var baseUrl: String,
     private val okHttpClientBuilder: OkHttpClient.Builder? = null,
     private val serializerBuilder: GsonBuilder = Serializer.gsonBuilder,
     private val callFactory: Call.Factory? = null,
     private val converterFactory: Converter.Factory? = null,
+    private val timeoutConfig: TimeoutConfig = TimeoutConfig(),
+    private val retryInterceptor: RetryInterceptor? = null,
 ) {
     private val apiAuthorizations = mutableMapOf<String, Interceptor>()
     private var logger: ((String) -> Unit)? = null
@@ -33,15 +47,6 @@ class ApiClient(
                 if (converterFactory != null) {
                     addConverterFactory(converterFactory)
                 }
-                addConverterFactory(object : Converter.Factory() {
-                    override fun responseBodyConverter(
-                        type: Type,
-                        annotations: Array<out Annotation>,
-                        retrofit: Retrofit
-                    ): Converter<ResponseBody, *>? {
-                        return super.responseBodyConverter(type, annotations, retrofit)
-                    }
-                })
             }
     }
 
@@ -52,9 +57,15 @@ class ApiClient(
     private val defaultClientBuilder: OkHttpClient.Builder by lazy {
         OkHttpClient()
             .newBuilder()
+            .connectTimeout(timeoutConfig.connectTimeout, timeoutConfig.timeUnit)
+            .readTimeout(timeoutConfig.readTimeout, timeoutConfig.timeUnit)
+            .writeTimeout(timeoutConfig.writeTimeout, timeoutConfig.timeUnit)
             .addInterceptor(HttpLoggingInterceptor { message -> logger?.invoke(message) }.apply {
                 level = HttpLoggingInterceptor.Level.BODY
             })
+            .apply {
+                retryInterceptor?.let { addInterceptor(it) }
+            }
     }
 
     init {
@@ -62,50 +73,76 @@ class ApiClient(
     }
 
     /**
-     * Adds an authorization to be used by the client
-     * @param authName Authentication name
-     * @param authorization Authorization interceptor
-     * @return ApiClient
+     * Adds an authorization to be used by the client.
+     * @param authName Authentication name (must be unique).
+     * @param authorization Authorization interceptor.
+     * @return This [ApiClient] instance for chaining.
+     * @throws IllegalArgumentException if [authName] is already registered.
      */
     fun addAuthorization(authName: String, authorization: Interceptor): ApiClient {
         if (apiAuthorizations.containsKey(authName)) {
-            throw RuntimeException("auth name $authName already in api authorizations")
+            throw IllegalArgumentException("auth name '$authName' already in api authorizations")
         }
         apiAuthorizations[authName] = authorization
         clientBuilder.addInterceptor(authorization)
         return this
     }
 
+    /**
+     * Sets a custom logger callback for HTTP traffic logging.
+     * @param logger A function that receives log messages.
+     * @return This [ApiClient] instance for chaining.
+     */
     fun setLogger(logger: (String) -> Unit): ApiClient {
         this.logger = logger
         return this
     }
 
+    /**
+     * Creates (or retrieves from cache) a Retrofit service instance for the given interface.
+     *
+     * @param S The service interface type.
+     * @param serviceClass The class of the service interface.
+     * @param interceptor An optional per-service interceptor added non-destructively.
+     * @return The created or cached service instance.
+     */
     fun <S> createService(serviceClass: Class<S>, interceptor: Interceptor? = null): S {
-        return if (apis.containsKey(serviceClass.simpleName)) {
-            apis[serviceClass.simpleName] as S
-        } else {
-            interceptor?.let {
-                clientBuilder.interceptors().clear()
-                clientBuilder.addInterceptor(interceptor)
-            }
-            val usedCallFactory = this.callFactory ?: clientBuilder.build()
-             retrofitBuilder.callFactory(usedCallFactory).build().create(serviceClass)
+        val key = serviceClass.simpleName
+        if (apis.containsKey(key)) {
+            @Suppress("UNCHECKED_CAST")
+            return apis[key] as S
         }
+
+        val usedCallFactory = if (interceptor != null) {
+            val perServiceClient = clientBuilder.build().newBuilder()
+                .addInterceptor(interceptor)
+                .build()
+            this.callFactory ?: perServiceClient
+        } else {
+            this.callFactory ?: clientBuilder.build()
+        }
+
+        val service = retrofitBuilder.callFactory(usedCallFactory).build().create(serviceClass)
+        apis[key] = service as Any
+        return service
+    }
+
+    /**
+     * Creates (or retrieves from cache) a Retrofit service instance using a reified type parameter.
+     *
+     * Usage: `val service = client.createService<MyService>()`
+     *
+     * @param S The service interface type.
+     * @param interceptor An optional per-service interceptor.
+     * @return The created or cached service instance.
+     */
+    inline fun <reified S> createService(interceptor: Interceptor? = null): S {
+        return createService(S::class.java, interceptor)
     }
 
     private fun normalizeBaseUrl() {
         if (!baseUrl.endsWith("/")) {
             baseUrl += "/"
-        }
-    }
-
-    private inline fun <T, reified U> Iterable<T>.runOnFirst(callback: U.() -> Unit) {
-        for (element in this) {
-            if (element is U) {
-                callback.invoke(element)
-                break
-            }
         }
     }
 }

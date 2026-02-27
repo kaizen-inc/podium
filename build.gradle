@@ -1,35 +1,34 @@
 plugins {
-    id 'org.jetbrains.kotlin.jvm' version '1.8.10'
+    alias libs.plugins.kotlin.jvm
     id "maven-publish"
 }
 
-group = 'inc.kaizen.base'
-version = '0.1'
+group = 'inc.kaizen.base.infrastructure'
+version = '1.0'
 
 repositories {
     mavenCentral()
 }
 
 dependencies {
-    var kotlin_version = '1.8.10'
-    var retrofitVersion = '2.9.0'
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+    implementation libs.kotlin.stdlib
 
-    implementation "com.squareup.okhttp3:logging-interceptor:4.9.1"
-    implementation "com.squareup.retrofit2:retrofit:$retrofitVersion"
-    implementation "com.squareup.retrofit2:converter-gson:$retrofitVersion"
-    implementation "com.squareup.retrofit2:converter-scalars:$retrofitVersion"
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4'
+    implementation libs.okhttp.logging
+    implementation libs.retrofit.core
+    implementation libs.retrofit.converter.gson
+    implementation libs.retrofit.converter.scalars
+    implementation libs.coroutines.core
 
-    def version = "5.5.4"
-    testImplementation "io.kotest:kotest-runner-junit5:$version"
-    testImplementation "io.kotest:kotest-assertions-core:$version"
-    testImplementation "io.kotest:kotest-property:$version"
+    testImplementation libs.kotest.runner.junit5
+    testImplementation libs.kotest.assertions.core
+    testImplementation libs.kotest.property
 
-    testImplementation 'org.jetbrains.kotlin:kotlin-test'
+    testImplementation libs.kotlin.test
 
-    def mockkVersion = "1.13.2"
-    testImplementation "io.mockk:mockk:${mockkVersion}"
+    testImplementation libs.mockk
+
+    testImplementation libs.okhttp.mockwebserver
+    testImplementation libs.coroutines.test
 }
 
 test {
@@ -37,7 +36,7 @@ test {
 }
 
 kotlin {
-    jvmToolchain(8)
+    jvmToolchain(21)
 }
 
 publishing {

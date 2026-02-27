@@ -6,6 +6,10 @@ class CollectionFormats {
 
         var params: List<String>
 
+        constructor() {
+            this.params = emptyList()
+        }
+
         constructor(params: List<String>) {
             this.params = params
         }
@@ -20,6 +24,8 @@ class CollectionFormats {
     }
 
     open class SSVParams : CSVParams {
+
+        constructor() : super()
 
         constructor(params: List<String>) : super(params)
 
