@@ -1,0 +1,38 @@
+﻿name: Auto Merge to Testing
+on:
+  workflow_run:
+    workflows: ["Build"]
+    types:
+      - completed
+    branches:
+      - develop
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    permissions:
+      contents: write
+      pull-requests: write
+      repository-projects: write
+      packages: write
+      checks: write
+      id-token: write
+      attestations: write
+      statuses: read
+      actions: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      - name: Merge develop to testing
+        run: |
+          git fetch origin testing
+          git checkout testing
+          git reset --hard origin/develop
+          git push origin testing --force --push-option ci.skip

@@ -1,0 +1,32 @@
+name: tag
+on:
+  push:
+    branches:
+      - stable
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Read version from build.gradle
+        id: version
+        run: |
+          VERSION=$(grep -m1 "^version\s*=" build.gradle | sed "s/version\s*=\s*['\"]//;s/['\"]//")
+          echo "value=$VERSION" >> $GITHUB_OUTPUT
+      - name: Create tag
+        run: |
+          TAG="v${{ steps.version.outputs.value }}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists, skipping."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git tag "$TAG"
+            git push origin "$TAG"
+            echo "Created and pushed tag $TAG"
+          fi
+
