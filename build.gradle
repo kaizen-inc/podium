@@ -3,7 +3,7 @@ plugins {
     id "maven-publish"
 }
 
-group = 'inc.kaizen.base.infrastructure'
+group = 'inc.kaizen.infra'
 version = '1.0'
 
 repositories {

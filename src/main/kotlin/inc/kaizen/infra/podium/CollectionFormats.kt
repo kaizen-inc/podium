@@ -1,4 +1,4 @@
-package inc.kaizen.base.infrastructure
+package inc.kaizen.infra.podium
 
 /**
  * Utility classes for serializing multi-value query/form parameters into

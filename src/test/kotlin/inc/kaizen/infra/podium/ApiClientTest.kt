@@ -1,4 +1,4 @@
-package inc.kaizen.base.infrastructure
+package inc.kaizen.infra.podium
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe

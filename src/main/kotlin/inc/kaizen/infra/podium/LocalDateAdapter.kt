@@ -1,18 +1,16 @@
-package inc.kaizen.base.infrastructure
+package inc.kaizen.infra.podium
 
 import com.google.gson.TypeAdapter
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonWriter
 import com.google.gson.stream.JsonToken.NULL
 import java.io.IOException
-import java.text.DateFormat
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
-class DateAdapter(val formatter: DateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ", Locale.getDefault())) : TypeAdapter<Date>() {
+class LocalDateAdapter(private val formatter: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE) : TypeAdapter<LocalDate>() {
     @Throws(IOException::class)
-    override fun write(out: JsonWriter?, value: Date?) {
+    override fun write(out: JsonWriter?, value: LocalDate?) {
         if (value == null) {
             out?.nullValue()
         } else {
@@ -21,16 +19,16 @@ class DateAdapter(val formatter: DateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:
     }
 
     @Throws(IOException::class)
-    override fun read(out: JsonReader?): Date? {
+    override fun read(out: JsonReader?): LocalDate? {
         out ?: return null
 
-        when (out.peek()) {
+        return when (out.peek()) {
             NULL -> {
                 out.nextNull()
-                return null
+                null
             }
             else -> {
-                return formatter.parse(out.nextString())
+                LocalDate.parse(out.nextString(), formatter)
             }
         }
     }
