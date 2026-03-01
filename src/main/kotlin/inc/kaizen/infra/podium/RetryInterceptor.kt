@@ -1,4 +1,4 @@
-package inc.kaizen.base.infrastructure
+package inc.kaizen.infra.podium
 
 import okhttp3.Interceptor
 import okhttp3.Response

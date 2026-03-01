@@ -1,4 +1,4 @@
-package inc.kaizen.base.infrastructure
+package inc.kaizen.infra.podium
 
 import com.google.gson.GsonBuilder
 import okhttp3.Call
@@ -18,7 +18,7 @@ import retrofit2.converter.scalars.ScalarsConverterFactory
  *
  * @param baseUrl The base URL for the API.
  * @param okHttpClientBuilder Optional custom OkHttpClient builder.
- * @param serializerBuilder The GsonBuilder used for serialization. Defaults to [Serializer.gsonBuilder].
+ * @param serializerBuilder The GsonBuilder used for serialization. Defaults to [inc.kaizen.infra.podium.Serializer.gsonBuilder].
  * @param callFactory Optional custom Call.Factory.
  * @param converterFactory Optional additional Converter.Factory.
  * @param timeoutConfig Timeout configuration for connect, read, and write. Defaults to 30s each.

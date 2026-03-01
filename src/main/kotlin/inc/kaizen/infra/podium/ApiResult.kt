@@ -1,4 +1,4 @@
-package inc.kaizen.base.infrastructure
+package inc.kaizen.infra.podium
 
 import retrofit2.HttpException
 import retrofit2.Response

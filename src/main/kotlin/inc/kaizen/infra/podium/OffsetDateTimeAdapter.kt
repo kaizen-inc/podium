@@ -1,16 +1,16 @@
-package inc.kaizen.base.infrastructure
+package inc.kaizen.infra.podium
 
 import com.google.gson.TypeAdapter
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonWriter
 import com.google.gson.stream.JsonToken.NULL
 import java.io.IOException
-import java.time.LocalDateTime
+import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 
-class LocalDateTimeAdapter(private val formatter: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME) : TypeAdapter<LocalDateTime>() {
+class OffsetDateTimeAdapter(private val formatter: DateTimeFormatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME) : TypeAdapter<OffsetDateTime>() {
     @Throws(IOException::class)
-    override fun write(out: JsonWriter?, value: LocalDateTime?) {
+    override fun write(out: JsonWriter?, value: OffsetDateTime?) {
         if (value == null) {
             out?.nullValue()
         } else {
@@ -19,7 +19,7 @@ class LocalDateTimeAdapter(private val formatter: DateTimeFormatter = DateTimeFo
     }
 
     @Throws(IOException::class)
-    override fun read(out: JsonReader?): LocalDateTime? {
+    override fun read(out: JsonReader?): OffsetDateTime? {
         out ?: return null
 
         when (out.peek()) {
@@ -28,7 +28,7 @@ class LocalDateTimeAdapter(private val formatter: DateTimeFormatter = DateTimeFo
                 return null
             }
             else -> {
-                return LocalDateTime.parse(out.nextString(), formatter)
+                return OffsetDateTime.parse(out.nextString(), formatter)
             }
         }
     }

@@ -1,4 +1,4 @@
-package inc.kaizen.base.infrastructure
+package inc.kaizen.infra.podium
 
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonParseException
